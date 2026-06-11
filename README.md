@@ -1,20 +1,18 @@
-# amatsukami
-Telegram Bot for adding members to the club from CRMI (Pavlodar city)
-
-git add requirements.txt
-git commit -m "Add requirements.txt"
-git push
-
-
+import os
 import telebot
 from telebot import types
 from datetime import datetime
+import time
 
-token = '8868692269:AAH_Q4fZ0F5ne3oe2ZcpvfE1CTG4o4UMGJI'
+# Token fulaa Render Environment Variables irraa akka dubbisu gochuuf
+token = os.getenv('BOT_TOKEN')
+if not token:
+    raise ValueError("Error: BOT_TOKEN is not set in Environment Variables!")
+
 bot = telebot.TeleBot(token)
 
-# Хранилище для данных
-GROUP_CHAT_ID = '-1002828257881'  # ⚠️ Замените на правильный ID группы!
+# Hanga gadiitti kuusaa dataa (Yeroo gabaabaaf memory irratti qofa tura)
+GROUP_CHAT_ID = '-1002828257881'  
 user_data = {}
 completed_registrations = {}
 
@@ -45,7 +43,6 @@ def handle_buttons(message):
     if message.text == "Вступить":
         user_id = message.from_user.id
         
-        # Проверяем, не заполнял ли пользователь уже анкету
         if user_id in completed_registrations:
             show_existing_application(message)
             return
@@ -112,7 +109,6 @@ def handle_buttons(message):
         )
 
 def show_existing_application(message):
-    """Показывает ранее заполненную анкету"""
     user_id = message.from_user.id
     data = completed_registrations[user_id]
     
@@ -134,22 +130,18 @@ def show_existing_application(message):
     markup = types.ReplyKeyboardRemove()
     bot.send_message(message.chat.id, existing_app_text, reply_markup=markup)
     
-    import time
     time.sleep(3)
     welcome(message)
 
 # 🎯 ФУНКЦИИ ДЛЯ АНКЕТЫ
 
 def start_registration(message):
-    """Начало заполнения анкеты"""
     user_id = message.from_user.id
-    user_data[user_id] = {}  # Создаем запись для пользователя
+    user_data[user_id] = {}  
     
-    # Убираем клавиатуру с кнопками
     markup = types.ReplyKeyboardRemove()
     bot.send_message(message.chat.id, "Подготовка...", reply_markup=markup)
     
-    # Запрашиваем ФИО
     msg = bot.send_message(
         message.chat.id,
         "📝 Введите ваше ФИО (полностью):"
@@ -157,28 +149,22 @@ def start_registration(message):
     bot.register_next_step_handler(msg, process_fio)
 
 def process_fio(message):
-    """Обработка ФИО"""
     user_id = message.from_user.id
     user_data[user_id]['fio'] = message.text
     
-    # Запрашиваем дату рождения
     msg = bot.send_message(message.chat.id, "Дата рождения (в формате ДД.ММ.ГГГГ):")
     bot.register_next_step_handler(msg, process_birthdate)
 
 def is_valid_date(date_string):
-    """Проверка правильности формата даты"""
     try:
-        # Проверяем базовый формат
         if len(date_string) != 10 or date_string[2] != '.' or date_string[5] != '.':
             return False
         
         day, month, year = date_string.split('.')
         
-        # Проверяем, что все части - числа
         if not (day.isdigit() and month.isdigit() and year.isdigit()):
             return False
         
-        # Проверяем диапазоны
         day = int(day)
         month = int(month) 
         year = int(year)
@@ -187,7 +173,7 @@ def is_valid_date(date_string):
             return False
         if not (1 <= day <= 31):
             return False
-        if not (1900 <= year <= 2024):
+        if not (1900 <= year <= 2026): # Gidda kanaan 2026 tti sirрэeffameera
             return False
             
         return True
@@ -195,21 +181,15 @@ def is_valid_date(date_string):
         return False
 
 def calculate_age(birth_date):
-    """Вычисление возраста по дате рождения"""
     today = datetime.now()
     age = today.year - birth_date.year
-    
-    # Проверяем, был ли уже день рождения в этом году
     if today.month < birth_date.month or (today.month == birth_date.month and today.day < birth_date.day):
         age -= 1
-    
     return age
 
 def process_birthdate(message):
-    """Обработка даты рождения"""
     user_id = message.from_user.id
     
-    # Проверяем формат даты
     if not is_valid_date(message.text):
         msg = bot.send_message(
             message.chat.id, 
@@ -221,11 +201,9 @@ def process_birthdate(message):
     
     user_data[user_id]['birthdate'] = message.text
     
-    # Вычисляем возраст
     birth_date = datetime.strptime(message.text, '%d.%m.%Y')
     user_data[user_id]['age'] = calculate_age(birth_date)
     
-    # Запрашиваем место обучения/работы
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("🎓 Учусь", "💼 Работаю", "📚 И то, и то", "🚫 Ничего из этого")
     
@@ -237,28 +215,22 @@ def process_birthdate(message):
     bot.register_next_step_handler(msg, process_status_choice)
 
 def process_status_choice(message):
-    """Обработка выбора статуса"""
     user_id = message.from_user.id
     choice = message.text
     user_data[user_id]['status_choice'] = choice
     
     if choice == "🎓 Учусь":
         ask_education_type(message)
-        
     elif choice == "💼 Работаю":
         ask_work_place(message)
-        
     elif choice == "📚 И то, и то":
-        user_data[user_id]['work_study'] = {}  # Создаем словарь для обоих
-        ask_education_type(message)  # Сначала про учёбу
-        
+        user_data[user_id]['work_study'] = {}  
+        ask_education_type(message)  
     elif choice == "🚫 Ничего из этого":
-        user_data[user_id]['work_study'] = "—"  # Прочерк
-        # Сразу завершаем анкету
+        user_data[user_id]['work_study'] = "—"  
         show_summary(message)
 
 def ask_education_type(message):
-    """Тип учебного заведения"""
     markup = types.ReplyKeyboardMarkup(resize_keyboard=True)
     markup.add("🏫 Школа", "🎓 Колледж", "🏛️ Институт", "🎓 Университет")
     
@@ -270,12 +242,10 @@ def ask_education_type(message):
     bot.register_next_step_handler(msg, process_education_type)
 
 def process_education_type(message):
-    """Обработка типа учебного заведения"""
     user_id = message.from_user.id
     education_type = message.text
     user_data[user_id]['education_type'] = education_type
     
-    # Запрашиваем название учебного заведения
     markup = types.ReplyKeyboardRemove()
     msg = bot.send_message(
         message.chat.id,
@@ -285,11 +255,9 @@ def process_education_type(message):
     bot.register_next_step_handler(msg, process_education_name)
 
 def process_education_name(message):
-    """Обработка названия учебного заведения"""
     user_id = message.from_user.id
     education_name = message.text
     
-    # Сохраняем данные в зависимости от контекста
     if user_data[user_id]['status_choice'] == "📚 И то, и то":
         user_data[user_id]['work_study']['education'] = {
             'type': user_data[user_id]['education_type'],
@@ -301,14 +269,12 @@ def process_education_name(message):
             'name': education_name
         }
     
-    # Запрашиваем класс/курс в зависимости от типа
     if user_data[user_id]['education_type'] == "🏫 Школа":
         ask_school_grade(message)
     else:
         ask_course(message)
 
 def ask_school_grade(message):
-    """Запрос класса для школы"""
     msg = bot.send_message(
         message.chat.id,
         "🔢 В каком вы классе? (только цифра):\n\n"
@@ -317,10 +283,8 @@ def ask_school_grade(message):
     bot.register_next_step_handler(msg, process_school_grade)
 
 def process_school_grade(message):
-    """Обработка класса школы"""
     user_id = message.from_user.id
     
-    # Проверяем, что введена цифра
     if not message.text.isdigit():
         msg = bot.send_message(
             message.chat.id,
@@ -332,21 +296,17 @@ def process_school_grade(message):
     
     grade = message.text
     
-    # Сохраняем класс
     if user_data[user_id]['status_choice'] == "📚 И то, и то":
         user_data[user_id]['work_study']['education']['grade'] = grade
     else:
         user_data[user_id]['work_study']['grade'] = grade
     
-    # Переходим к следующему шагу
     if user_data[user_id]['status_choice'] == "📚 И то, и то":
-        ask_work_place(message)  # После учёбы спрашиваем про работу
+        ask_work_place(message)  
     else:
-        # Завершаем анкету для "Учусь"
         show_summary(message)
 
 def ask_course(message):
-    """Запрос курса для колледжа/института/университета"""
     msg = bot.send_message(
         message.chat.id,
         "🎓 На каком вы курсе? (только цифра):\n\n"
@@ -355,10 +315,8 @@ def ask_course(message):
     bot.register_next_step_handler(msg, process_course)
 
 def process_course(message):
-    """Обработка курса"""
     user_id = message.from_user.id
     
-    # Проверяем, что введена цифра
     if not message.text.isdigit():
         msg = bot.send_message(
             message.chat.id,
@@ -370,21 +328,17 @@ def process_course(message):
     
     course = message.text
     
-    # Сохраняем курс
     if user_data[user_id]['status_choice'] == "📚 И то, и то":
         user_data[user_id]['work_study']['education']['course'] = course
     else:
         user_data[user_id]['work_study']['course'] = course
     
-    # Переходим к следующему шагу
     if user_data[user_id]['status_choice'] == "📚 И то, и то":
-        ask_work_place(message)  # После учёбы спрашиваем про работу
+        ask_work_place(message)  
     else:
-        # Завершаем анкету для "Учусь"
         show_summary(message)
 
 def ask_work_place(message):
-    """Запрос места работы"""
     msg = bot.send_message(
         message.chat.id,
         "💼 Где вы работаете?\n\n"
@@ -393,21 +347,17 @@ def ask_work_place(message):
     bot.register_next_step_handler(msg, process_work_place)
 
 def process_work_place(message):
-    """Обработка места работы"""
     user_id = message.from_user.id
     work_place = message.text
     
-    # Сохраняем данные в зависимости от контекста
     if user_data[user_id]['status_choice'] == "📚 И то, и то":
         user_data[user_id]['work_study']['work'] = work_place
     else:
         user_data[user_id]['work_study'] = work_place
         
-    # Завершаем анкету
     show_summary(message)
 
 def format_work_study_display(data):
-    """Форматирование для показа пользователю"""
     work_study = data['work_study']
     status = data['status_choice']
     
@@ -416,24 +366,19 @@ def format_work_study_display(data):
             return f"🎓 Учёба: {work_study['name']}\n📚 Класс: {work_study['grade']}"
         else:
             return f"🎓 Учёба: {work_study['name']}\n📚 Курс: {work_study['course']}"
-    
     elif status == "💼 Работаю":
         return f"💼 Работа: {work_study}"
-    
     elif status == "📚 И то, и то":
         education = work_study['education']
         work = work_study['work']
-        
         if education['type'] == "🏫 Школа":
             return f"🎓 Учёба: {education['name']}\n📚 Класс: {education['grade']}\n💼 Работа: {work}"
         else:
             return f"🎓 Учёба: {education['name']}\n📚 Курс: {education['course']}\n💼 Работа: {work}"
-    
     else:
         return f"💼 Статус: {work_study}"
 
 def format_work_study_group(data):
-    """Форматирование для отправки в группу"""
     work_study = data['work_study']
     status = data['status_choice']
     
@@ -442,24 +387,19 @@ def format_work_study_group(data):
             return f"│ 🎓 Учёба: {work_study['name']}\n│ 📚 Класс: {work_study['grade']}\n"
         else:
             return f"│ 🎓 Учёба: {work_study['name']}\n│ 📚 Курс: {work_study['course']}\n"
-    
     elif status == "💼 Работаю":
         return f"│ 💼 Работа: {work_study}\n"
-    
     elif status == "📚 И то, и то":
         education = work_study['education']
         work = work_study['work']
-        
         if education['type'] == "🏫 Школа":
             return f"│ 🎓 Учёба: {education['name']}\n│ 📚 Класс: {education['grade']}\n│ 💼 Работа: {work}\n"
         else:
             return f"│ 🎓 Учёба: {education['name']}\n│ 📚 Курс: {education['course']}\n│ 💼 Работа: {work}\n"
-    
     else:
         return f"│ 💼 Статус: {work_study}\n"
 
 def show_summary(message):
-    """Показ итогов анкеты пользователю"""
     user_id = message.from_user.id
     data = user_data[user_id]
     
@@ -479,22 +419,14 @@ def show_summary(message):
 """
     
     bot.send_message(message.chat.id, summary_text)
-    
-    # Сохраняем в завершенные анкеты
     completed_registrations[user_id] = data.copy()
-    
-    # Отправляем в группу
     send_to_group(message, data)
     
-    # Возвращаем основное меню через 3 секунды
-    import time
     time.sleep(3)
     welcome(message)
 
 def send_to_group(message, user_data):
-    """Отправка анкеты в группу"""
     work_study_text = format_work_study_group(user_data)
-    
     username = f"@{message.from_user.username}" if message.from_user.username else "без username"
     
     group_message = f"""
@@ -512,13 +444,11 @@ def send_to_group(message, user_data):
 """
     
     try:
-        # Отправляем в группу
         bot.send_message(GROUP_CHAT_ID, group_message)
         print(f"✅ Анкета отправлена в группу для {user_data['fio']}")
     except Exception as e:
         print(f"❌ Ошибка отправки в группу: {e}")
 
-# ЗАПУСК БОТА
 if __name__ == '__main__':
     print("Бот запускается...")
     print("Перейдите в Telegram и напишите /start боту")
