@@ -1,19 +1,32 @@
 import os
 import telebot
 import requests
+from threading import Thread
+from flask import Flask
 
+# Flask Server uumuu (Render akka Port banamu arguuf)
+app = Flask('')
+
+@app.route('/')
+def home():
+    return "Bootiin AI Einstein toora irra jira!"
+
+def run_flask():
+    # Render ofumaan PORT nuuf kenna, yoo dhabame 8080 fayyadama
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
+
+# Telegram Bot Setup
 token = os.getenv('BOT_TOKEN')
 if not token:
     token = '8868692269:AAH_Q4fZ0F5ne3oe2ZcpvfE1CTG4o4UMGJI'
 
 bot = telebot.TeleBot(token)
 
-# 📣 Odeeffannoo Chaanaalii Keetii (Amma Sirreeffameera)
-# ID chaanaalii kee isa duraanii saniin wal qabsiisneera
+# 📣 Odeeffannoo Chaanaalii Keetii
 CHANNEL_ID = -1002394584458
 CHANNEL_LINK = "https://t.me/beekkumsa_walii_galaa"
 
-# Namni sun chaanaalii kee keessa jiru fi jiraachuu baachuu isaa mirkaneessuuf
 def check_status(user_id):
     try:
         member = bot.get_chat_member(CHANNEL_ID, user_id)
@@ -24,18 +37,18 @@ def check_status(user_id):
     except Exception:
         return False
 
-# AI irraa deebii fiduuf
+# AI irraa deebii fiduuf (Free API)
 def get_ai_response(prompt):
     try:
         url = f"https://browser9.ddns.net/api/v1/chat/gpt-4o?text={prompt}"
         response = requests.get(url, timeout=15)
         if response.status_code == 200:
             data = response.json()
-            return data.get("reply", "🧠 Of dhowwadhu, deebii xiinxalaa jira. Mee deebisii na gaaftadhu!")
+            return data.get("reply", "🧠 Deebii xiinxalaa jira. Mee deebisii na gaaftadhu!")
         else:
-            return "🧠 Sammuun koo yeroo muraasaaf biredii fudhachaa jira. Mee deebisii na gaaftadhu!"
+            return "🧠 Sammuun koo yeroo muraasaaf biredii fudhachaa jira. Mee xiqqoo eegiiti na gaaftadhu!"
     except Exception:
-        return "🧠 Dogoggorri uumameera. Mee xiqqoo eegiiti na gaaftadhu."
+        return "🧠 Sarvarri AI yeroo muraasaaf hojii ala ta'eera. Mee booda na gaaftadhu."
 
 @bot.message_handler(commands=['start', 'help'])
 def send_welcome(message):
@@ -44,7 +57,7 @@ def send_welcome(message):
         welcome_text = (
             f"👋 Akkam, {message.from_user.first_name}!\n\n"
             "Ani Bot Einstein haaraa ChatGPT kanaan hojjedhu dha. "
-            "Gaaffii qabdu kamiyyuu na gaaftadhu, sirriitti siif nan deebisa! 🧠✨"
+            "Gaaffii qabdu kamiyyuu na gaaftadhu! 🧠✨"
         )
         bot.reply_to(message, welcome_text)
     else:
@@ -54,7 +67,6 @@ def send_welcome(message):
 def handle_ai_chat(message):
     user_id = message.from_user.id
     
-    # 1. Dirqama chaanaalii join gochuu isaa eeggachuu
     if not check_status(user_id):
         bot.reply_to(message, f"🚀 Bootii kana fayyadamuuf, jalqaba chaanaalii keenya join godhaa:\n\n{CHANNEL_LINK}")
         return
@@ -62,10 +74,13 @@ def handle_ai_chat(message):
     user_query = message.text
     bot.send_chat_action(message.chat.id, 'typing')
     
-    # 2. AI irraa deebii fiduu
     ai_response = get_ai_response(user_query)
     bot.reply_to(message, ai_response)
 
 if __name__ == '__main__':
+    # Flask Server duuba koodiitiin jalqabsiisuu (Threaded)
+    t = Thread(target=run_flask)
+    t.start()
+    
     print("Bootiin AI Chat guutummaatti jalqabaa jira...")
     bot.infinity_polling()
