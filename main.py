@@ -16,10 +16,10 @@ def run_flask():
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
 
-# Telegram Bot Setup
+# Telegram Bot Setup (Token kee isa haaraa asitti galcheera)
 token = os.getenv('BOT_TOKEN')
 if not token:
-    token = '8868692269:AAH_Q4fZ0F5ne3oe2ZcpvfE1CTG4o4UMGJI'
+    token = '8868692269:AAHZHSne3i2Y1eiQjR-DJDe7vuPrJYqD-eM'
 
 bot = telebot.TeleBot(token)
 
@@ -56,31 +56,4 @@ def send_welcome(message):
     if check_status(user_id):
         welcome_text = (
             f"👋 Akkam, {message.from_user.first_name}!\n\n"
-            "Ani Bot Einstein haaraa ChatGPT kanaan hojjedhu dha. "
-            "Gaaffii qabdu kamiyyuu na gaaftadhu! 🧠✨"
-        )
-        bot.reply_to(message, welcome_text)
-    else:
-        bot.reply_to(message, f"🚀 Bootii kana fayyadamuuf, jalqaba chaanaalii keenya join godhaa:\n\n{CHANNEL_LINK}")
-
-@bot.message_handler(content_types=['text'])
-def handle_ai_chat(message):
-    user_id = message.from_user.id
-    
-    if not check_status(user_id):
-        bot.reply_to(message, f"🚀 Bootii kana fayyadamuuf, jalqaba chaanaalii keenya join godhaa:\n\n{CHANNEL_LINK}")
-        return
-
-    user_query = message.text
-    bot.send_chat_action(message.chat.id, 'typing')
-    
-    ai_response = get_ai_response(user_query)
-    bot.reply_to(message, ai_response)
-
-if __name__ == '__main__':
-    # Flask Server duuba koodiitiin jalqabsiisuu (Threaded)
-    t = Thread(target=run_flask)
-    t.start()
-    
-    print("Bootiin AI Chat guutummaatti jalqabaa jira...")
-    bot.infinity_polling()
+            "Ani Bot Einstein haaraa ChatGPT k
