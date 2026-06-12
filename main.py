@@ -1,81 +1,42 @@
-import os
-import telebot
-import requests
-from threading import Thread
-from flask import Flask
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-# Flask Server uumuu (Render akka Port banamu arguuf)
-app = Flask('')
+# Enable logging
+logging.basicConfig(
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s", level=logging.INFO
+)
+logger = logging.getLogger(__name__)
 
-@app.route('/')
-def home():
-    return "Bootiin AI Einstein toora irra jira!"
+# Replace with your bot token from BotFather
+TOKEN = "8433276841:AAG-yPk8WcfqDBmyV6M-DJyw8YbQX9XcBR8"
 
-def run_flask():
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host='0.0.0.0', port=port)
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Send a welcome message when /start is issued."""
+    user = update.effective_user
+    await update.message.reply_text(
+        f"Hi {user.first_name}! @beinstein_6 chat bot. Send me any message and I'll echo it back."
+    )
 
-# Telegram Bot Setup (Token kee as keessaa badeera, bifa nagaatiin)
-token = os.getenv('BOT_TOKEN')
-bot = telebot.TeleBot(token)
+async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Echo the user message."""
+    await update.message.reply_text(update.message.text)
 
-# 📣 Odeeffannoo Chaanaalii Keetii
-CHANNEL_ID = -1002394584458
-CHANNEL_LINK = "https://t.me/beekkumsa_walii_galaa"
+async def unknown(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+    """Handle unknown commands."""
+    await update.message.reply_text("Sorry, I didn't understand that command.")
 
-def check_status(user_id):
-    try:
-        member = bot.get_chat_member(CHANNEL_ID, user_id)
-        if member.status in ['member', 'administrator', 'creator']:
-            return True
-        else:
-            return False
-    except Exception:
-        return False
+def main() -> None:
+    """Start the bot."""
+    # Create the Application
+    application = Application.builder().token(TOKEN).build()
 
-# AI irraa deebii fiduuf (Free API)
-def get_ai_response(prompt):
-    try:
-        url = f"https://browser9.ddns.net/api/v1/chat/gpt-4o?text={prompt}"
-        response = requests.get(url, timeout=15)
-        if response.status_code == 200:
-            data = response.json()
-            return data.get("reply", "🧠 Deebii xiinxalaa jira. Mee deebisii na gaaftadhu!")
-        else:
-            return "🧠 Sammuun koo yeroo muraasaaf biredii fudhachaa jira. Mee xiqqoo eegiiti na gaaftadhu!"
-    except Exception:
-        return "🧠 Sarvarri AI yeroo muraasaaf hojii ala ta'eera. Mee booda na gaaftadhu."
+    # Register handlers
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, echo))
+    application.add_handler(MessageHandler(filters.COMMAND, unknown))
 
-@bot.message_handler(commands=['start', 'help'])
-def send_welcome(message):
-    user_id = message.from_user.id
-    if check_status(user_id):
-        welcome_text = (
-            f"👋 Akkam, {message.from_user.first_name}!\n\n"
-            "Ani Bot Einstein haaraa ChatGPT kanaan hojjedhu dha. "
-            "Gaaffii qabdu kamiyyuu na gaaftadhu! 🧠✨"
-        )
-        bot.reply_to(message, welcome_text)
-    else:
-        bot.reply_to(message, f"🚀 Bootii kana fayyadamuuf, jalqaba chaanaalii keenya join godhaa:\n\n{CHANNEL_LINK}")
+    # Run the bot until Ctrl+C
+    application.run_polling(allowed_updates=Update.ALL_TYPES)
 
-@bot.message_handler(content_types=['text'])
-def handle_ai_chat(message):
-    user_id = message.from_user.id
-    
-    if not check_status(user_id):
-        bot.reply_to(message, f"🚀 Bootii kana fayyadamuuf, jalqaba chaanaalii keenya join godhaa:\n\n{CHANNEL_LINK}")
-        return
-
-    user_query = message.text
-    bot.send_chat_action(message.chat.id, 'typing')
-    
-    ai_response = get_ai_response(user_query)
-    bot.reply_to(message, ai_response)
-
-if __name__ == '__main__':
-    t = Thread(target=run_flask)
-    t.start()
-    
-    print("Bootiin AI Chat guutummaatti jalqabaa jira...")
-    bot.infinity_polling()
+if __name__ == "__main__":
+    main()
